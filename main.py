@@ -304,7 +304,7 @@ class Ladder(Tool):
 class Hammer(Tool):
     img=mini_hammer
     name="hammer"
-    max_dur=100
+    max_dur=50
 
     def use_here(self,user):
         x,y=user.rect.center
@@ -320,8 +320,7 @@ class Hammer(Tool):
         tags.sort()
 
         t=None
-        if tags:
-            print tags
+
         if tags==["wood","wood","wood"]:
             t=Ladder(user.rect.midbottom)
         elif tags==["iron","wood","wood"]:
@@ -334,6 +333,7 @@ class Hammer(Tool):
         if t is not None:
             user.worldgroup.add(t)
             user.objects.append(t)
+            self.durability-=1
             for o in objects:
                 user.objects.remove(o)
                 user.worldgroup.remove(o)
@@ -636,7 +636,6 @@ def game_loop():
                                             ,1,(255,255,255)),(5,38+i*15))
             else:
                 screen.blit(the_font.render("NOTHING"
-                                            +" "+str(dwarf.inventory.durability)
                                             +" "+str(dwarf.food/50)
                                             ,1,(255,255,255)),(5,38+i*15))
         if recording:
