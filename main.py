@@ -37,7 +37,10 @@ TILE=16
 
 pygame.display.flip()
 
+the_font=pygame.font.Font("orbitron-black.ttf", 14)
+
 dwarf=pygame.image.load("gnome.png").convert_alpha()
+
 dirt=pygame.image.load("dirt.png").convert()
 hall=pygame.image.load("hall.png").convert()
 boletus=pygame.image.load("boletus2.png").convert()
@@ -47,34 +50,38 @@ grass=pygame.image.load("grass.png").convert()
 sky=pygame.image.load("sky.png").convert()
 bedrock=pygame.image.load("bedrock.png").convert()
 ladder=pygame.image.load("ladder2.png").convert()
-
+iron_ore=pygame.image.load("iron3.png").convert()
+bamboo=pygame.image.load("bamboo2.png").convert()
+diamond=pygame.image.load("diamond.png").convert()
 
 mini_boletus=pygame.image.load("boletus-mini.png").convert_alpha()
-mini_pick=pygame.image.load("pick-mini.png").convert()
-mini_ladder=pygame.image.load("ladder-mini.png").convert()
-mini_hammer=pygame.image.load("hammer-mini.png").convert()
-mini_ladder=pygame.image.load("ladder-mini.png").convert()
-the_font=pygame.font.Font("orbitron-black.ttf", 14)
-mini_sickle=pygame.image.load("sickle-mini.png").convert()
+mini_pick=pygame.image.load("pick-mini.png").convert_alpha()
+mini_ladder=pygame.image.load("ladder-mini.png").convert_alpha()
+mini_hammer=pygame.image.load("hammer-mini.png").convert_alpha()
+mini_ladder=pygame.image.load("ladder-mini.png").convert_alpha()
+mini_sickle=pygame.image.load("sickle-mini.png").convert_alpha()
+iron_bar=pygame.image.load("iron-bar.png").convert_alpha()
+wood_bar=pygame.image.load("wood-bar.png").convert_alpha()
+mini_diamond=pygame.image.load("diamond-mini.png").convert_alpha()
 
-tiles=[hall,dirt,grass,sky,bedrock,ladder,boletus,amanita]
+tiles=[hall,dirt,grass,sky,bedrock,ladder,boletus,amanita,iron_ore,bamboo,diamond]
 
 FALL_SPEED=2
 
 def can_stand(player,ground_coords):
     for x,y in (player.bottomleft,player.bottomright,
                 player.midleft, player.midright):
-        if ground_coords[(x-1)/TILE][(y-1)/TILE] in [1,4,5]:
+        if ground_coords[(x-1)/TILE][(y-1)/TILE] in [1,4,5,8,10]:
             return True
     return False
 
 def cant_move(player,ground_coords):
     for x,y in (player.bottomleft,player.bottomright):
-        if ground_coords[(x-1)/TILE][(y-1)/TILE] in [1,4]:
+        if ground_coords[(x-1)/TILE][(y-1)/TILE] in [1,4,8,10]:
             return True
     for x,y in (player.topleft,player.topright,
                 player.midleft, player.midright):
-        if ground_coords[x/TILE][y/TILE] in [1,4]:
+        if ground_coords[x/TILE][y/TILE] in [1,4,8,10]:
             return True
     return False
 
@@ -154,21 +161,15 @@ class Mob(pygame.sprite.Sprite):
                 self.behaviour.close
                 self.behaviour=None
 
-        self.image=self.image_orig.copy()
+        self.image=self.image_orig
 
         if self.inventory is not None:
-            self.image.blit(self.inventory.img,(4,8))
+            self.inventory.rect.center=self.rect.midright
 
         if self.face==1:
-            self.image=pygame.transform.flip(self.image, True, False)
-
-class ToolThing(pygame.sprite.Sprite):
-    def __init__(self,tool,pos):
-        pygame.sprite.Sprite.__init__(self)
-        self.image = tool.img
-        self.rect = self.image.get_rect()
-        self.tool=tool
-        self.rect.midbottom=pos
+            self.image=pygame.transform.flip(self.image_orig, True, False)
+            if self.inventory is not None:
+                self.inventory.rect.center=self.rect.midleft
 
 class FoodThing(pygame.sprite.Sprite):
     name="Food"
@@ -181,9 +182,25 @@ class FoodThing(pygame.sprite.Sprite):
         self.health=health
         self.rect.midbottom=pos
 
-class Tool(object):
-    def __init__(self):
+class RawMaterial(pygame.sprite.Sprite):
+    def __init__(self,img,pos,tag):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
         self.durability=1
+        self.img = img
+        self.rect = self.image.get_rect()
+        self.rect.midbottom=pos
+        self.tag=tag
+        self.name=tag
+
+class Tool(pygame.sprite.Sprite):
+    max_dur=1
+    def __init__(self,pos=(0,0)):
+        self.durability=self.max_dur
+        pygame.sprite.Sprite.__init__(self)
+        self.image=self.img
+        self.rect = self.image.get_rect()
+        self.rect.midbottom=pos
 
     def use_left(self,user):
         return self.use_here(user)
@@ -199,19 +216,34 @@ class Tool(object):
 class PickAxe(Tool):
     img=mini_pick
     name="pick"
-
-    def __init__(self):
-        self.durability=100
-
+    max_dur=100
     def pick_block(self,x,y,user):
         if user.terrain[x/TILE][y/TILE]==1:
             self.durability-=1
             user.terrain[x/TILE][y/TILE]=0
             user.t_d.set()
             return True
+        elif user.terrain[x/TILE][y/TILE]==8:
+            self.durability-=2
+            user.terrain[x/TILE][y/TILE]=0
+            user.t_d.set()
+            for i in range(3):
+                t=RawMaterial(iron_bar,user.rect.midbottom,"iron")
+                user.worldgroup.add(t)
+                user.objects.append(t)
+            return True
+        elif user.terrain[x/TILE][y/TILE]==10:
+            self.durability-=10
+            user.terrain[x/TILE][y/TILE]=0
+            user.t_d.set()
+            t=RawMaterial(mini_diamond,user.rect.midbottom,"diamond")
+            user.worldgroup.add(t)
+            user.objects.append(t)
+            return True
 
     def use_here(self,user):
-        return False
+        x,y=user.rect.center
+        return self.pick_block(x,y,user)
     def use_left(self,user):
         x,y=user.rect.center
         return self.pick_block(x-15,y,user)
@@ -228,9 +260,7 @@ class PickAxe(Tool):
 class Sickle(Tool):
     img=mini_sickle
     name="sickle"
-
-    def __init__(self):
-        self.durability=100
+    max_dur=100
 
     def pick_block(self,x,y,user):
         if user.terrain[x/TILE][y/TILE]==6:
@@ -243,7 +273,16 @@ class Sickle(Tool):
                 user.worldgroup.add(t)
                 user.objects.append(t)
             return True
-
+        elif user.terrain[x/TILE][y/TILE]==9:
+            self.durability-=1
+            user.terrain[x/TILE][y/TILE]=0
+            user.t_d.set()
+            for i in range(3):
+                t=RawMaterial(wood_bar,user.rect.midbottom,"wood")
+                user.worldgroup.add(t)
+                user.objects.append(t)
+            return True
+            
     def use_here(self,user):
         x,y=user.rect.center
         return self.pick_block(x,y,user)
@@ -251,9 +290,7 @@ class Sickle(Tool):
 class Ladder(Tool):
     img=mini_ladder
     name="ladder"
-
-    def __init__(self):
-        self.durability=100
+    max_dur=100
 
     def use_here(self,user):
         x,y=user.rect.center
@@ -262,6 +299,43 @@ class Ladder(Tool):
             user.terrain[x/TILE][y/TILE]=5
             user.t_d.set()
             return True
+
+class Hammer(Tool):
+    img=mini_hammer
+    name="hammer"
+    max_dur=100
+
+    def use_here(self,user):
+        x,y=user.rect.center
+
+        objects=[]
+        for o in user.objects[:]:
+            ox,oy=o.rect.center
+            distance=abs(ox-x)+abs(oy-y)
+            if distance<32 and isinstance(o,RawMaterial):
+                objects.append(o)
+
+        tags=[o.tag for o in objects]
+        tags.sort()
+
+        t=None
+        if tags:
+            print tags
+        if tags==["wood","wood","wood"]:
+            t=Ladder(user.rect.midbottom)
+        elif tags==["iron","wood","wood"]:
+            t=Hammer(user.rect.midbottom)
+        elif tags==["iron","iron","wood"]:
+            t=PickAxe(user.rect.midbottom)
+        elif tags==["iron","wood"]:
+            t=Sickle(user.rect.midbottom)
+
+        if t is not None:
+            user.worldgroup.add(t)
+            user.objects.append(t)
+            for o in objects:
+                user.objects.remove(o)
+                user.worldgroup.remove(o)
 
 class Dwarf(Mob):
     def __init__(self,x,y,terrain,t_d,group,objects):
@@ -272,7 +346,7 @@ class Dwarf(Mob):
        self.food=10000
        self.worldgroup=group
        self.objects=objects
-
+    
     def do_command(self,command):
         if command is None:
             return False
@@ -286,16 +360,9 @@ class Dwarf(Mob):
             return True
         elif command=="PUT":
             if self.inventory is not None:
-                if isinstance(self.inventory,Tool):
-                    t=ToolThing(self.inventory,self.rect.midbottom)
-                    self.worldgroup.add(t)
-                    self.objects.append(t)
-                    self.inventory=None
-                else:
-                    self.inventory.rect.midbottom=self.rect.midbottom
-                    self.worldgroup.add(self.inventory)
-                    self.objects.append(self.inventory)
-                    self.inventory=None
+                self.inventory.rect.midbottom=self.rect.midbottom
+                self.objects.append(self.inventory)
+                self.inventory=None
         elif command=="TAKE":
             if self.inventory is None:
                 max_d=16
@@ -308,16 +375,11 @@ class Dwarf(Mob):
                         max_d=distance
                 if nearest is not None:
                     self.objects.remove(nearest)
-                    self.worldgroup.remove(nearest)
-                    if isinstance(nearest,ToolThing):
-                        self.inventory=nearest.tool
-                    else:
-                        self.inventory=nearest
-                        
-
+                    self.inventory=nearest
         elif command[:3]=="USE":
             if isinstance(self.inventory,FoodThing):
                 self.food+=self.inventory.health
+                self.worldgroup.remove(self.inventory)
                 self.inventory=None
             if isinstance(self.inventory,Tool):
                 if self.food==0:
@@ -342,7 +404,7 @@ class Dwarf(Mob):
             return Mob.do_command(self,command)
 
     def try_eat(self):
-        max_d=64
+        max_d=48
         nearest=None
         x,y=self.rect.center
         for o in self.objects[:]:
@@ -363,7 +425,8 @@ class Dwarf(Mob):
         if self.food>0:
             self.food-=1
         if self.inventory:
-            if self.inventory.durability==0:
+            if self.inventory.durability<1:
+                self.worldgroup.remove(self.inventory)
                 self.inventory=None
 
 class TMX(object):
@@ -417,10 +480,21 @@ def make_terrain():
 
     for x in range(5000):
         for y in range(50,100):
+            ri=random.random()
             if terrain[x][y]==0 and terrain[x][y+1]==1:
-                if random.randint(1,5)==2:
+                if ri<0.05:
+                    terrain[x][y]=9
+            if terrain[x][y]==0 and terrain[x][y+1]==1:
+                if ri<0.2:
                     terrain[x][y]=6
-
+            if terrain[x][y]==1:
+                if ri<0.007:
+                    terrain[x][y]=8
+        for y in range(110,200):
+            ri=random.random()
+            if terrain[x][y]==1:
+                if ri<0.002:
+                    terrain[x][y]=10
     return terrain
 
 def make_shadow_terrain():
@@ -451,6 +525,7 @@ def game_loop():
     a_dwarf=Dwarf(2500*16,40*16,terrain,terrain_d,group,objects)
     another_dwarf=Dwarf(2502*16,40*16,terrain,terrain_d,group,objects)
     yet_another_dwarf=Dwarf(2505*16,40*16,terrain,terrain_d,group,objects)
+    fourth_dwarf=Dwarf(2507*16,40*16,terrain,terrain_d,group,objects)
 
     dwarves.append(a_dwarf)
     group.add(a_dwarf)
@@ -458,12 +533,23 @@ def game_loop():
     group.add(another_dwarf)
     dwarves.append(yet_another_dwarf)
     group.add(yet_another_dwarf)
+    dwarves.append(fourth_dwarf)
+    group.add(fourth_dwarf)
+
+    a_hammer=Hammer()
+    a_pick=PickAxe()
+    a_sickle=Sickle()
+    a_ladder=Ladder()
+    group.add(a_hammer)
+    group.add(a_pick)
+    group.add(a_sickle)
+    group.add(a_ladder)
 
     the_dwarf=dwarves[dw_index]
-    a_dwarf.inventory=PickAxe()
-    another_dwarf.inventory=Ladder()
-    yet_another_dwarf.inventory=Sickle()
-    yet_another_dwarf.food=1500
+    a_dwarf.inventory=a_pick
+    another_dwarf.inventory=a_ladder
+    yet_another_dwarf.inventory=a_sickle
+    fourth_dwarf.inventory=a_hammer
 
     while True:
         if android:
