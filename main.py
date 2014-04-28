@@ -40,6 +40,7 @@ pygame.display.flip()
 the_font=pygame.font.Font("orbitron-black.ttf", 14)
 
 dwarf=pygame.image.load("gnome.png").convert_alpha()
+rec=pygame.image.load("rec.png").convert_alpha()
 
 dirt=pygame.image.load("dirt.png").convert()
 hall=pygame.image.load("hall.png").convert()
@@ -420,7 +421,7 @@ class Dwarf(Mob):
 
     def update(self,delta):
         Mob.update(self,delta)
-        if self.food<1000:
+        if self.food<2000:
             self.try_eat()
         if self.food>0:
             self.food-=1
@@ -631,8 +632,17 @@ def game_loop():
             if dwarf.inventory is not None:
                 screen.blit(the_font.render(dwarf.inventory.name
                                             +" "+str(dwarf.inventory.durability)
-                                            +" "+str(dwarf.food)
-                                            ,1,(255,255,255)),(5,3+i*15))
+                                            +" "+str(dwarf.food/50)
+                                            ,1,(255,255,255)),(5,38+i*15))
+            else:
+                screen.blit(the_font.render("NOTHING"
+                                            +" "+str(dwarf.inventory.durability)
+                                            +" "+str(dwarf.food/50)
+                                            ,1,(255,255,255)),(5,38+i*15))
+        if recording:
+            screen.blit(rec,(0,0))
+
+        screen.blit(the_font.render("arrows-move, j/k-switch gnome, x/s-take/drop, c-use tool",1,(255,255,255)),(5,23))
         pygame.display.flip()
 
 game_loop()
