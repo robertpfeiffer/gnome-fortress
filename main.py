@@ -3,6 +3,7 @@ import random
 import noise
 #from pyscroll import pyscroll
 import pyscroll
+import sys
 
 pygame.init()
 
@@ -30,6 +31,10 @@ except ImportError:
 
 #screen=pygame.display.set_mode((0,0),pygame.DOUBLEBUF|pygame.FULLSCREEN)
 screen=pygame.display.set_mode((800,600),pygame.DOUBLEBUF)
+
+if len(sys.argv)==2 and sys.argv[1]=="--big":
+    screen_real=screen
+    screen=pygame.Surface((400,300)).convert()
 
 screen_w=screen.get_width()
 screen_h=screen.get_height()
@@ -628,20 +633,30 @@ def game_loop():
         group.center(the_dwarf.rect.center)
         group.draw(screen)
 
+        if len(sys.argv)==2 and sys.argv[1]=="--big":
+            screen.blit(the_font.render("arrows-move, j/k-switch gnome",1,[255,255,255]),[5,23])
+            screen.blit(the_font.render("x/s-take/drop, c-use tool",1,[255,255,255]),[5,38])
+            off=53
+        else:
+            screen.blit(the_font.render("arrows-move, j/k-switch gnome, x/s-take/drop, c-use tool",1,[255,255,255]),[5,23])
+            off=38
+
         for i,dwarf in enumerate(dwarves):
             if dwarf.inventory is not None:
                 screen.blit(the_font.render(dwarf.inventory.name
                                             +" "+str(dwarf.inventory.durability)
                                             +" "+str(dwarf.food/50)
-                                            ,1,(255,255,255)),(5,38+i*15))
+                                            ,1,(255,255,255)),(5,off+i*15))
             else:
                 screen.blit(the_font.render("NOTHING"
                                             +" "+str(dwarf.food/50)
-                                            ,1,(255,255,255)),(5,38+i*15))
+                                            ,1,(255,255,255)),(5,off+i*15))
         if recording:
             screen.blit(rec,(0,0))
 
-        screen.blit(the_font.render("arrows-move, j/k-switch gnome, x/s-take/drop, c-use tool",1,(255,255,255)),(5,23))
+        if len(sys.argv)==2 and sys.argv[1]=="--big":
+            pygame.transform.scale(screen,(800,600),screen_real)
+
         pygame.display.flip()
 
 game_loop()
